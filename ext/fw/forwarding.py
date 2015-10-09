@@ -33,9 +33,14 @@ import pox.openflow.libopenflow_01 as of
 from collections import defaultdict
 import pox.lib.packet as pkt
 
+import time
+
 from collections import namedtuple
 
 log = core.getLogger()
+
+#using for calculating the get_path time
+startTime = 0.0
 
 switches = {}
 switch_ports = {}
@@ -182,7 +187,7 @@ class NewFlow(Event):
 		self.match = match
 		self.prev_path = prev_path
 		self.adj = adj
-	
+
 class Switch(EventMixin):
 	_eventMixin_events = set([
 							NewFlow,
@@ -257,6 +262,9 @@ class Switch(EventMixin):
 				self.connection.send(msg)
 		
 		log.debug("Received PacketIn")		
+		global startTime
+		if ((startTime - 0.0) < 1):
+		    startTime = time.time()
 		packet = event.parsed
 				
 		SwitchPort = namedtuple('SwitchPoint', 'dpid port')
@@ -266,6 +274,7 @@ class Switch(EventMixin):
 		
 		if packet.effective_ethertype == packet.LLDP_TYPE:
 			drop()
+			startTime = 0.0
 			log.debug("Switch %s dropped LLDP packet", self)
 		elif packet.dst.is_multicast:
 			flood()
@@ -278,6 +287,7 @@ class Switch(EventMixin):
 			#Instead of flooding them, we drop it at the current switch and have it resend by the switch to which the recipient is connected.
 			#flood()
 			drop()
+			startTime = 0.0
 			dst = mac_learning[packet.dst]
 			msg = of.ofp_packet_out()
 			msg.data = event.ofp.data
@@ -291,7 +301,12 @@ class Switch(EventMixin):
 			if prev_path is None:
 				flood()
 				return
+			stopTime = time.time()
 			log.debug("Path from %s to %s over path %s", packet.src, packet.dst, prev_path)
+			log.info("Starting to get_path at time: %f", startTime)
+			log.info("Calculating path is completing at time: %f", stopTime)
+			log.info("The total time of calculating path is %f", (stopTime - startTime))
+			startTime = 0.0
 			if self.l3_matching == True: #only match on l2-properties, useful when doing experiments with UDP streams as you can insert a flow using ping and then start sending udp.
 				
 				match = ofp_match_withHash()

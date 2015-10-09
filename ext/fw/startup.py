@@ -29,8 +29,8 @@ def launch ():
         launch()
 
         #we solved the flooding-problem in l2_multi_withstate
-        from openflow.spanning_tree import launch
-        launch(no_flood = True, hold_down = True)
+        #from openflow.spanning_tree import launch
+        #launch(no_flood = True, hold_down = True)
 		
         from fw.forwarding import launch
         launch(l3_matching=False)
